@@ -65,8 +65,8 @@
               install -Dm755 "$src" "$out/bin/omp"
             '';
 
-            doCheck = pkgs.stdenv.isLinux;
-            checkPhase = ''
+            doInstallCheck = pkgs.stdenv.isLinux;
+            installCheckPhase = ''
               patchelf --print-interpreter "$out/bin/omp" >/dev/null
               patchelf --print-needed "$out/bin/omp" >/dev/null
             '';
@@ -96,7 +96,7 @@
               enable = lib.mkEnableOption "oh-my-pi";
               package = lib.mkOption {
                 type = lib.types.package;
-                default = self.packages.${pkgs.system}.default;
+                default = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
                 description = "oh-my-pi package to install.";
               };
             };
