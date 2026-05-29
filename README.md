@@ -52,6 +52,11 @@ Home Manager module example:
 }
 ```
 
+Available Home Manager options:
+
+- `programs.oh-my-pi.enable`: Enables installation of Oh My Pi through Home Manager.
+- `programs.oh-my-pi.package`: Overrides which `oh-my-pi` package gets installed. By default, this uses `omp-flake.packages.<system>.default`.
+
 ## Development
 
 Validate flake outputs:
