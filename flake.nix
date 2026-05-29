@@ -21,23 +21,29 @@
           pkgs = import nixpkgs { inherit system; };
           sources = {
             "x86_64-linux" = {
-              url = "https://github.com/can1357/oh-my-pi/releases/download/v15.5.12/omp-linux-x64";
-              sha256 = "sha256-feKqv68rm7G8TQCngBUYUbqZgkXJnsS2AcRRGsHqsr0=";
+            url = "https://github.com/can1357/oh-my-pi/releases/download/v15.5.12/omp-linux-x64";
+            sha256 = "sha256-feKqv68rm7G8TQCngBUYUbqZgkXJnsS2AcRRGsHqsr0=";
             };
             "aarch64-linux" = {
-              url = "https://github.com/can1357/oh-my-pi/releases/download/v15.5.12/omp-linux-arm64";
-              sha256 = "sha256-a+i0EWKu9bEm7ogKsLeoGS4YCdTVMVV/ybD3gCHR5ok=";
+            url = "https://github.com/can1357/oh-my-pi/releases/download/v15.5.12/omp-linux-arm64";
+            sha256 = "sha256-a+i0EWKu9bEm7ogKsLeoGS4YCdTVMVV/ybD3gCHR5ok=";
             };
             "x86_64-darwin" = {
-              url = "https://github.com/can1357/oh-my-pi/releases/download/v15.5.12/omp-darwin-x64";
-              sha256 = "sha256-7BAlLx+mjnVE2VxW04S/Oy5ckZZLsh8Q4RxI0oEIQ0E=";
+            url = "https://github.com/can1357/oh-my-pi/releases/download/v15.5.12/omp-darwin-x64";
+            sha256 = "sha256-7BAlLx+mjnVE2VxW04S/Oy5ckZZLsh8Q4RxI0oEIQ0E=";
             };
             "aarch64-darwin" = {
-              url = "https://github.com/can1357/oh-my-pi/releases/download/v15.5.12/omp-darwin-arm64";
-              sha256 = "sha256-BZHsn+Wp0qVnVShean/1T+xGsVXWdZsFpPLYtFLq+zw=";
+            url = "https://github.com/can1357/oh-my-pi/releases/download/v15.5.12/omp-darwin-arm64";
+            sha256 = "sha256-BZHsn+Wp0qVnVShean/1T+xGsVXWdZsFpPLYtFLq+zw=";
             };
           };
           srcInfo = sources.${system} or (throw "Unsupported system: ${system}");
+          linuxLibPath = pkgs.lib.makeLibraryPath [
+            pkgs.stdenv.cc.cc.lib
+            pkgs.glibc
+            pkgs.openssl
+            pkgs.zlib
+          ];
         in
         {
           default = pkgs.stdenv.mkDerivation {
@@ -50,25 +56,31 @@
 
             dontUnpack = true;
 
+            # Bun-compiled omp binaries on Linux break when auto-patched/stripped by stdenv.
             nativeBuildInputs = pkgs.lib.optionals pkgs.stdenv.isLinux [
-              pkgs.autoPatchelfHook
+              pkgs.makeWrapper
               pkgs.patchelf
             ];
 
-            buildInputs = pkgs.lib.optionals pkgs.stdenv.isLinux [
-              pkgs.stdenv.cc.cc.lib
-              pkgs.openssl
-              pkgs.zlib
-            ];
+            installPhase =
+              if pkgs.stdenv.isLinux then
+                ''
+                  install -Dm755 "$src" "$out/libexec/omp"
+                  patchelf --set-interpreter "${pkgs.stdenv.cc.bintools.dynamicLinker}" "$out/libexec/omp"
+                  makeWrapper "$out/libexec/omp" "$out/bin/omp" \
+                    --prefix LD_LIBRARY_PATH : "${linuxLibPath}"
+                ''
+              else
+                ''
+                  install -Dm755 "$src" "$out/bin/omp"
+                '';
 
-            installPhase = ''
-              install -Dm755 "$src" "$out/bin/omp"
-            '';
-
+            dontStrip = pkgs.stdenv.isLinux;
+            dontPatchELF = pkgs.stdenv.isLinux;
             doInstallCheck = pkgs.stdenv.isLinux;
             installCheckPhase = ''
-              patchelf --print-interpreter "$out/bin/omp" >/dev/null
-              patchelf --print-needed "$out/bin/omp" >/dev/null
+              export HOME="$TMPDIR"
+              "$out/bin/omp" --version >/dev/null
             '';
 
             meta = {
