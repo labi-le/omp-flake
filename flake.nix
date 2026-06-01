@@ -21,20 +21,20 @@
           pkgs = import nixpkgs { inherit system; };
           sources = {
             "x86_64-linux" = {
-            url = "https://github.com/can1357/oh-my-pi/releases/download/v15.5.12/omp-linux-x64";
-            sha256 = "sha256-feKqv68rm7G8TQCngBUYUbqZgkXJnsS2AcRRGsHqsr0=";
+            url = "https://github.com/can1357/oh-my-pi/releases/download/v15.7.6/omp-linux-x64";
+            sha256 = "sha256-43/IfB/b5csZDCFFGAJNzB1ZfVeDMdOdS7/SG//jpLg=";
             };
             "aarch64-linux" = {
-            url = "https://github.com/can1357/oh-my-pi/releases/download/v15.5.12/omp-linux-arm64";
-            sha256 = "sha256-a+i0EWKu9bEm7ogKsLeoGS4YCdTVMVV/ybD3gCHR5ok=";
+            url = "https://github.com/can1357/oh-my-pi/releases/download/v15.7.6/omp-linux-arm64";
+            sha256 = "sha256-qj6eT3p5AzuMeVNCSJ7OuO1L6vw/ci61ibQe7M7Il08=";
             };
             "x86_64-darwin" = {
-            url = "https://github.com/can1357/oh-my-pi/releases/download/v15.5.12/omp-darwin-x64";
-            sha256 = "sha256-7BAlLx+mjnVE2VxW04S/Oy5ckZZLsh8Q4RxI0oEIQ0E=";
+            url = "https://github.com/can1357/oh-my-pi/releases/download/v15.7.6/omp-darwin-x64";
+            sha256 = "sha256-NahsHPQKAOGt3G+YzGxAvlUNB7uNHKiEfJ2iLKYTysQ=";
             };
             "aarch64-darwin" = {
-            url = "https://github.com/can1357/oh-my-pi/releases/download/v15.5.12/omp-darwin-arm64";
-            sha256 = "sha256-BZHsn+Wp0qVnVShean/1T+xGsVXWdZsFpPLYtFLq+zw=";
+            url = "https://github.com/can1357/oh-my-pi/releases/download/v15.7.6/omp-darwin-arm64";
+            sha256 = "sha256-3t3HJtobN1lks09ya5WBrjIvLAtKUU+YA+EvgAtRVmM=";
             };
           };
           srcInfo = sources.${system} or (throw "Unsupported system: ${system}");
@@ -48,7 +48,7 @@
         {
           default = pkgs.stdenv.mkDerivation {
             pname = "oh-my-pi";
-            version = "15.5.12";
+            version = "15.7.6";
 
             src = pkgs.fetchurl {
               inherit (srcInfo) url sha256;
