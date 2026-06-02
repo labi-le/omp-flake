@@ -21,20 +21,20 @@
           pkgs = import nixpkgs { inherit system; };
           sources = {
             "x86_64-linux" = {
-            url = "https://github.com/can1357/oh-my-pi/releases/download/v15.7.6/omp-linux-x64";
-            sha256 = "sha256-43/IfB/b5csZDCFFGAJNzB1ZfVeDMdOdS7/SG//jpLg=";
+            url = "https://github.com/can1357/oh-my-pi/releases/download/v15.8.0/omp-linux-x64";
+            sha256 = "sha256-a0nNzh3jnv1dgxXPIpqs9cIa955OTlKXukINVgns7H8=";
             };
             "aarch64-linux" = {
-            url = "https://github.com/can1357/oh-my-pi/releases/download/v15.7.6/omp-linux-arm64";
-            sha256 = "sha256-qj6eT3p5AzuMeVNCSJ7OuO1L6vw/ci61ibQe7M7Il08=";
+            url = "https://github.com/can1357/oh-my-pi/releases/download/v15.8.0/omp-linux-arm64";
+            sha256 = "sha256-1Mpkt3AD4c3+zTzILaMY7yNzxuEngUzykm3XsuFpH7U=";
             };
             "x86_64-darwin" = {
-            url = "https://github.com/can1357/oh-my-pi/releases/download/v15.7.6/omp-darwin-x64";
-            sha256 = "sha256-NahsHPQKAOGt3G+YzGxAvlUNB7uNHKiEfJ2iLKYTysQ=";
+            url = "https://github.com/can1357/oh-my-pi/releases/download/v15.8.0/omp-darwin-x64";
+            sha256 = "sha256-gCoZ/fMTzAFuea7UHVhkd7Cxkm30Tc3t3FQyCEVyPSo=";
             };
             "aarch64-darwin" = {
-            url = "https://github.com/can1357/oh-my-pi/releases/download/v15.7.6/omp-darwin-arm64";
-            sha256 = "sha256-3t3HJtobN1lks09ya5WBrjIvLAtKUU+YA+EvgAtRVmM=";
+            url = "https://github.com/can1357/oh-my-pi/releases/download/v15.8.0/omp-darwin-arm64";
+            sha256 = "sha256-RhgQRXZQSYV9sosiZdzMpqpYuqNZQKbzJCOH0+R+/iY=";
             };
           };
           srcInfo = sources.${system} or (throw "Unsupported system: ${system}");
@@ -48,7 +48,7 @@
         {
           default = pkgs.stdenv.mkDerivation {
             pname = "oh-my-pi";
-            version = "15.7.6";
+            version = "15.8.0";
 
             src = pkgs.fetchurl {
               inherit (srcInfo) url sha256;
@@ -58,6 +58,7 @@
 
             # Bun-compiled omp binaries on Linux break when auto-patched/stripped by stdenv.
             nativeBuildInputs = pkgs.lib.optionals pkgs.stdenv.isLinux [
+              pkgs.bash
               pkgs.makeWrapper
               pkgs.patchelf
             ];
