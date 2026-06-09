@@ -133,7 +133,7 @@
                   };
                 });
                 default = { };
-                description = "Agent files installed to ~/.omp/agents/agent/.";
+                description = "Agent files installed to ~/.omp/agents/agent/<name>.";
               };
             };
 
