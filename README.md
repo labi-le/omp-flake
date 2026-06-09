@@ -51,8 +51,9 @@ Home Manager module example:
   programs.oh-my-pi = {
     enable = true;
     agents = {
-      "my-agent.lua".text = ''
-        -- agent content
+      "my-agent.md".text = ''
+        # My Agent
+        This is my custom agent definition.
       '';
     };
   };
@@ -63,10 +64,11 @@ Available Home Manager options:
 
 - `programs.oh-my-pi.enable`: Enables installation of Oh My Pi through Home Manager.
 - `programs.oh-my-pi.package`: Overrides which `oh-my-pi` package gets installed. By default, this uses `omp-flake.packages.<system>.default`.
-- `programs.oh-my-pi.agents`: Attribute set of agent files installed to `~/.omp/agents/agent/`.
-  - `<name>.source`: Path to a file copied into `~/.omp/agents/agent/<name>`.
-  - `<name>.text`: Inline file contents written to `~/.omp/agents/agent/<name>`.
+- `programs.oh-my-pi.agents`: Attribute set of markdown agent files installed to `~/.omp/agents/agent/`; each attribute name becomes the destination filename and must end with `.md`.
+  - `<name>.source`: Path to a markdown file copied into `~/.omp/agents/agent/<name>`.
+  - `<name>.text`: Inline markdown contents written to `~/.omp/agents/agent/<name>`.
   - `<name>.executable`: Marks the installed file as executable (default: `false`).
+  - Exactly one of `<name>.source` or `<name>.text` must be set.
 
 ## Development
 

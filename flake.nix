@@ -118,12 +118,12 @@
                     source = lib.mkOption {
                       type = lib.types.nullOr lib.types.path;
                       default = null;
-                      description = "Path to an agent file to install.";
+                      description = "Path to a markdown agent file to install.";
                     };
                     text = lib.mkOption {
                       type = lib.types.nullOr lib.types.lines;
                       default = null;
-                      description = "Inline agent file content to install.";
+                      description = "Inline markdown agent file content to install.";
                     };
                     executable = lib.mkOption {
                       type = lib.types.bool;
@@ -133,7 +133,7 @@
                   };
                 });
                 default = { };
-                description = "Agent files installed to ~/.omp/agents/agent/<name>.";
+                description = "Agent markdown files installed to ~/.omp/agents/agent/, where each attribute name becomes the filename.";
               };
             };
 
@@ -155,6 +155,10 @@
                     (agentCfg: (agentCfg.source == null) != (agentCfg.text == null))
                     (lib.attrValues cfg.agents);
                   message = "Each programs.oh-my-pi.agents.<name> must set exactly one of `source` or `text`.";
+                }
+                {
+                  assertion = lib.all (name: lib.hasSuffix ".md" name) (lib.attrNames cfg.agents);
+                  message = "Each programs.oh-my-pi.agents.<name> must end with `.md`.";
                 }
               ];
             };
