@@ -112,10 +112,51 @@
                 default = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
                 description = "oh-my-pi package to install.";
               };
+              agents = lib.mkOption {
+                type = lib.types.attrsOf (lib.types.submodule {
+                  options = {
+                    source = lib.mkOption {
+                      type = lib.types.nullOr lib.types.path;
+                      default = null;
+                      description = "Path to an agent file to install.";
+                    };
+                    text = lib.mkOption {
+                      type = lib.types.nullOr lib.types.lines;
+                      default = null;
+                      description = "Inline agent file content to install.";
+                    };
+                    executable = lib.mkOption {
+                      type = lib.types.bool;
+                      default = false;
+                      description = "Whether the installed agent file should be executable.";
+                    };
+                  };
+                });
+                default = { };
+                description = "Agent files installed to ~/.omp/agents/agent/.";
+              };
             };
 
             config = lib.mkIf cfg.enable {
               home.packages = [ cfg.package ];
+              home.file = lib.mapAttrs'
+                (name: agentCfg:
+                  lib.nameValuePair ".omp/agents/agent/${name}" ({
+                    inherit (agentCfg) executable;
+                  } // lib.optionalAttrs (agentCfg.source != null) {
+                    source = agentCfg.source;
+                  } // lib.optionalAttrs (agentCfg.text != null) {
+                    text = agentCfg.text;
+                  }))
+                cfg.agents;
+              assertions = [
+                {
+                  assertion = lib.all
+                    (agentCfg: (agentCfg.source == null) != (agentCfg.text == null))
+                    (lib.attrValues cfg.agents);
+                  message = "Each programs.oh-my-pi.agents.<name> must set exactly one of `source` or `text`.";
+                }
+              ];
             };
           };
       };
