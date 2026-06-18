@@ -21,20 +21,20 @@
           pkgs = import nixpkgs { inherit system; };
           sources = {
             "x86_64-linux" = {
-              url = "https://github.com/can1357/oh-my-pi/releases/download/v15.12.3/omp-linux-x64";
-              sha256 = "sha256-UJS7H7fkBtiRNuSUSN6Yrp6cBf6xBmo5si00BgLTF90=";
+              url = "https://github.com/can1357/oh-my-pi/releases/download/v16.0.8/omp-linux-x64";
+              sha256 = "sha256-9TWnFDOP2tKcqqfNBrWh8Yr1ztAIiSR0X1IgpmVKswA=";
             };
             "aarch64-linux" = {
-              url = "https://github.com/can1357/oh-my-pi/releases/download/v15.12.3/omp-linux-arm64";
-              sha256 = "sha256-BjXWjM1P7L4rF1E80wD7gv90qJ+c26WgM8iR9VMFus8=";
+              url = "https://github.com/can1357/oh-my-pi/releases/download/v16.0.8/omp-linux-arm64";
+              sha256 = "sha256-4w7gyy3IO5Tvav2GDPQ5nbseKa0QGmVvg13vXUGMW5E=";
             };
             "x86_64-darwin" = {
-              url = "https://github.com/can1357/oh-my-pi/releases/download/v15.12.3/omp-darwin-x64";
-              sha256 = "sha256-l2PWzE2CrGeOttPwLA3qZsh30AUCWhOhiEIrtydH4ao=";
+              url = "https://github.com/can1357/oh-my-pi/releases/download/v16.0.8/omp-darwin-x64";
+              sha256 = "sha256-qMFv/u/to0rRcQMukj34BJ5zauDBtWmsVth8x800XcQ=";
             };
             "aarch64-darwin" = {
-              url = "https://github.com/can1357/oh-my-pi/releases/download/v15.12.3/omp-darwin-arm64";
-              sha256 = "sha256-P3V1TYNK+q/xf3lLD2XYVjQ11m9XxkXOEuP1J08V7Xg=";
+              url = "https://github.com/can1357/oh-my-pi/releases/download/v16.0.8/omp-darwin-arm64";
+              sha256 = "sha256-GCF/oPbqYwKb11HjWwwyQF5vnKNhKp0vVS13Qp0+pCc=";
             };
           };
           srcInfo = sources.${system} or (throw "Unsupported system: ${system}");
@@ -48,7 +48,7 @@
         {
           default = pkgs.stdenv.mkDerivation {
             pname = "oh-my-pi";
-            version = "15.12.3";
+            version = "16.0.8";
 
             src = pkgs.fetchurl {
               inherit (srcInfo) url sha256;
