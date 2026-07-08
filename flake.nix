@@ -311,11 +311,14 @@
                       ''}/extension.js"
                     else
                       let
+                        metaJson = builtins.readFile (builtins.fetchurl "https://registry.npmjs.org/${plugin}");
+                        meta = builtins.fromJSON metaJson;
+                        version = meta."dist-tags".latest;
+                        tarballUrl = meta.versions.${version}.dist.tarball;
                         plainName = if lib.hasPrefix "@" plugin then
                           let parts = lib.splitString "/" plugin; in builtins.elemAt parts 1
                         else plugin;
-                        tarball = builtins.fetchTarball "https://registry.npmjs.org/${plugin}/latest";
-                        src = tarball;
+                        src = builtins.fetchTarball tarballUrl;
                       in
                       "${pkgs.runCommand "omp-plugin-${plainName}" { inherit src; } ''
                         mkdir -p $out
