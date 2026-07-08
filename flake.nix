@@ -323,7 +323,7 @@
                       in
                       "${pkgs.runCommand "omp-plugin-${plainName}" { inherit src; } ''
                         mkdir -p $out
-                        cp $src/package/dist/extension.js $out/extension.js
+                        cp $src/dist/extension.js $out/extension.js
                       ''}/extension.js";
 
                   pluginPaths = map mkPluginDrv cfg.plugins;
