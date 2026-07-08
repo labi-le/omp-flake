@@ -99,6 +99,15 @@
         };
       });
 
+      lib.mkNpmExtension = { pkgs, url, hash, sourcePath ? "package/dist/extension.js", stripComponents ? 2 }:
+        pkgs.runCommand "omp-extension"
+          {
+            src = pkgs.fetchurl { inherit url hash; };
+          } ''
+            mkdir -p $out
+            tar xf $src --strip-components=${toString stripComponents} -C $out ${sourcePath}
+          '';
+
       homeManagerModules = {
         default = { config, lib, pkgs, ... }:
           let
@@ -135,20 +144,187 @@
                 default = { };
                 description = "Agent markdown files installed to ~/.omp/agents/agent/, where each attribute name becomes the filename.";
               };
+
+              extensions = lib.mkOption {
+                type = lib.types.listOf lib.types.str;
+                default = [ ];
+                description = "Extension paths registered in config.yml.";
+              };
+
+              disabledExtensions = lib.mkOption {
+                type = lib.types.listOf lib.types.str;
+                default = [ ];
+                description = "Extension module names to disable (e.g. 'extension-module:my-ext').";
+              };
+
+              models = lib.mkOption {
+                type = lib.types.submodule {
+                  options = {
+                    default = lib.mkOption {
+                      type = lib.types.nullOr lib.types.str;
+                      default = null;
+                      description = "Default model ID. Sets modelRoles.default.";
+                    };
+                    roles = lib.mkOption {
+                      type = lib.types.attrsOf lib.types.str;
+                      default = { };
+                      description = "Model role mapping (smol, slow, vision, plan, advisor, …).";
+                    };
+                    cycleOrder = lib.mkOption {
+                      type = lib.types.listOf lib.types.str;
+                      default = [ ];
+                      description = "Model role cycle order for /cycle.";
+                    };
+                    providerOrder = lib.mkOption {
+                      type = lib.types.listOf lib.types.str;
+                      default = [ ];
+                      description = "Provider preference order (e.g. [\"anthropic\" \"openai\"]).";
+                    };
+                    enabled = lib.mkOption {
+                      type = lib.types.listOf lib.types.str;
+                      default = [ ];
+                      description = "Enabled model IDs.";
+                    };
+                    disabledProviders = lib.mkOption {
+                      type = lib.types.listOf lib.types.str;
+                      default = [ ];
+                      description = "Disabled provider names.";
+                    };
+                  };
+                };
+                default = { };
+                description = "Model selection and role configuration.";
+              };
+
+              tools = lib.mkOption {
+                type = lib.types.submodule {
+                  options = {
+                    approvalMode = lib.mkOption {
+                      type = lib.types.nullOr (lib.types.enum [ "default" "yolo" "prompt" "write" ]);
+                      default = null;
+                      description = "Tool approval mode.";
+                    };
+                    approval = lib.mkOption {
+                      type = lib.types.attrsOf (lib.types.enum [ "allow" "prompt" "deny" ]);
+                      default = { };
+                      description = "Per-tool approval overrides (e.g. bash = \"prompt\").";
+                    };
+                    intentTracing = lib.mkOption {
+                      type = lib.types.nullOr lib.types.bool;
+                      default = null;
+                      description = "Enable intent tracing for tools.";
+                    };
+                    maxTimeout = lib.mkOption {
+                      type = lib.types.nullOr lib.types.int;
+                      default = null;
+                      description = "Maximum tool timeout in milliseconds.";
+                    };
+                  };
+                };
+                default = { };
+                description = "Tool execution and approval configuration.";
+              };
+
+              task = lib.mkOption {
+                type = lib.types.submodule {
+                  options = {
+                    isolation = lib.mkOption {
+                      type = lib.types.nullOr lib.types.bool;
+                      default = null;
+                      description = "Enable isolated git worktrees for subagent tasks.";
+                    };
+                  };
+                };
+                default = { };
+                description = "Task and subagent configuration.";
+              };
+
+              symbolPreset = lib.mkOption {
+                type = lib.types.nullOr (lib.types.enum [ "unicode" "nerd" "ascii" ]);
+                default = null;
+                description = "Glyph set for icons and symbols.";
+              };
+
+              npmCommand = lib.mkOption {
+                type = lib.types.nullOr (lib.types.listOf lib.types.str);
+                default = null;
+                description = "npm command array for package management.";
+              };
+
+              settings = lib.mkOption {
+                type = lib.types.attrs;
+                default = { };
+                description = "Extra config.yml keys not covered by typed options. Merged last so it can override anything.";
+              };
             };
 
             config = lib.mkIf cfg.enable {
               home.packages = [ cfg.package ];
-              home.file = lib.mapAttrs'
-                (name: agentCfg:
-                  lib.nameValuePair ".omp/agents/agent/${name}" ({
-                    inherit (agentCfg) executable;
-                  } // lib.optionalAttrs (agentCfg.source != null) {
-                    source = agentCfg.source;
-                  } // lib.optionalAttrs (agentCfg.text != null) {
-                    text = agentCfg.text;
-                  }))
-                cfg.agents;
+
+              home.file = lib.mkMerge [
+                (lib.mapAttrs'
+                  (name: agentCfg:
+                    lib.nameValuePair ".omp/agents/agent/${name}" ({
+                      inherit (agentCfg) executable;
+                    } // lib.optionalAttrs (agentCfg.source != null) {
+                      source = agentCfg.source;
+                    } // lib.optionalAttrs (agentCfg.text != null) {
+                      text = agentCfg.text;
+                    }))
+                  cfg.agents)
+                (lib.mkIf
+                  (cfg.extensions != [ ]
+                    || cfg.disabledExtensions != [ ]
+                    || cfg.models.default != null || cfg.models.roles != { }
+                    || cfg.models.cycleOrder != [ ] || cfg.models.providerOrder != [ ]
+                    || cfg.models.enabled != [ ] || cfg.models.disabledProviders != [ ]
+                    || cfg.tools.approvalMode != null || cfg.tools.approval != { }
+                    || cfg.tools.intentTracing != null || cfg.tools.maxTimeout != null
+                    || cfg.task.isolation != null
+                    || cfg.symbolPreset != null || cfg.npmCommand != null
+                    || cfg.settings != { })
+                  {
+                    ".omp/agent/config.yml".text =
+                    let
+                      inherit (cfg) extensions disabledExtensions symbolPreset npmCommand settings;
+
+                      modelRoles =
+                        lib.optionalAttrs (cfg.models.default != null) { default = cfg.models.default; }
+                        // cfg.models.roles;
+
+                      configAttrs =
+                        lib.optionalAttrs (extensions != [ ]) { inherit extensions; }
+                        // lib.optionalAttrs (disabledExtensions != [ ]) { inherit disabledExtensions; }
+                        // lib.optionalAttrs (modelRoles != { }) { inherit modelRoles; }
+                        // lib.optionalAttrs (cfg.models.cycleOrder != [ ]) { cycleOrder = cfg.models.cycleOrder; }
+                        // lib.optionalAttrs (cfg.models.providerOrder != [ ]) { modelProviderOrder = cfg.models.providerOrder; }
+                        // lib.optionalAttrs (cfg.models.enabled != [ ]) { enabledModels = cfg.models.enabled; }
+                        // lib.optionalAttrs (cfg.models.disabledProviders != [ ]) { inherit (cfg.models) disabledProviders; }
+                        // lib.optionalAttrs (cfg.tools.approvalMode != null || cfg.tools.approval != { } || cfg.tools.intentTracing != null || cfg.tools.maxTimeout != null) {
+                          tools =
+                            lib.filterAttrs (_: v: v != null && v != { })
+                              {
+                                approvalMode = cfg.tools.approvalMode;
+                                approval = cfg.tools.approval;
+                                intentTracing = cfg.tools.intentTracing;
+                                maxTimeout = cfg.tools.maxTimeout;
+                              };
+                        }
+                        // lib.optionalAttrs (cfg.task.isolation != null) {
+                          task = {
+                            isolation = {
+                              enabled = cfg.task.isolation;
+                            };
+                          };
+                        }
+                        // lib.optionalAttrs (symbolPreset != null) { inherit symbolPreset; }
+                        // lib.optionalAttrs (npmCommand != null) { inherit npmCommand; }
+                        // settings;
+                    in
+                    builtins.toJSON configAttrs;
+                })
+              ];
+
               assertions = [
                 {
                   assertion = lib.all
