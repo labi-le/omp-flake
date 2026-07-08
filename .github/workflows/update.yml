@@ -1,0 +1,72 @@
+name: Update oh-my-pi
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v27
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+
+      - name: Get latest release
+        id: release
+        run: |
+          tag=$(curl -sSfL \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/can1357/oh-my-pi/releases/latest \
+            | jq -r '.tag_name')
+          version="${tag#v}"
+          echo "latest_tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "latest_version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check if update needed
+        id: check
+        run: |
+          current=$(grep -oP 'version = "\K[^"]+' flake.nix)
+          latest="${{ steps.release.outputs.latest_version }}"
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          if [ "$current" = "$latest" ]; then
+            echo "Up to date ($current). Nothing to do."
+            echo "needs_update=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Update needed: $current → $latest"
+            echo "needs_update=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Update version and hashes
+        if: steps.check.outputs.needs_update == 'true'
+        run: |
+          chmod +x scripts/update-version.sh
+          ./scripts/update-version.sh "${{ steps.release.outputs.latest_version }}"
+
+      - name: Validate flake
+        if: steps.check.outputs.needs_update == 'true'
+        run: nix flake check
+
+      - name: Create Pull Request
+        if: steps.check.outputs.needs_update == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "bump: oh-my-pi ${{ steps.check.outputs.current }} → ${{ steps.release.outputs.latest_version }}"
+          branch: bump/oh-my-pi-${{ steps.release.outputs.latest_version }}
+          title: "bump: oh-my-pi ${{ steps.check.outputs.current }} → ${{ steps.release.outputs.latest_version }}"
+          body: |
+            Automated update.
+
+            - **${{ steps.check.outputs.current }}** → **${{ steps.release.outputs.latest_version }}**
+            - Release: https://github.com/can1357/oh-my-pi/releases/tag/${{ steps.release.outputs.latest_tag }}
+
+            All platform SHA256 hashes regenerated via `nix-prefetch-url`.
+          labels: automated,dependencies
