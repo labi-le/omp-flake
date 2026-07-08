@@ -296,14 +296,15 @@
                       in
                       "${pkgs.runCommand "omp-plugin-${repoName}" { inherit src; } ''
                         mkdir -p $out
-                        if [ -f $src/dist/extension.js ]; then
-                          cp $src/dist/extension.js $out/extension.js
-                        elif [ -f $src/dist/extension.ts ]; then
-                          cp $src/dist/extension.ts $out/extension.js
-                        elif [ -f $src/extension.js ]; then
-                          cp $src/extension.js $out/extension.js
-                        elif [ -f $src/extension.ts ]; then
-                          cp $src/extension.ts $out/extension.js
+                        root=$(ls -d $src/*/ 2>/dev/null | head -1)
+                        if [ -f $root/dist/extension.js ]; then
+                          cp $root/dist/extension.js $out/extension.js
+                        elif [ -f $root/dist/extension.ts ]; then
+                          cp $root/dist/extension.ts $out/extension.js
+                        elif [ -f $root/extension.js ]; then
+                          cp $root/extension.js $out/extension.js
+                        elif [ -f $root/extension.ts ]; then
+                          cp $root/extension.ts $out/extension.js
                         else
                           echo "No extension entry point found in $src" >&2
                           exit 1
@@ -322,7 +323,7 @@
                       in
                       "${pkgs.runCommand "omp-plugin-${plainName}" { inherit src; } ''
                         mkdir -p $out
-                        tar xf $src --strip-components=2 -C $out package/dist/extension.js
+                        cp $src/package/dist/extension.js $out/extension.js
                       ''}/extension.js";
 
                   pluginPaths = map mkPluginDrv cfg.plugins;
