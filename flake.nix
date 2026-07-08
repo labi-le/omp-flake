@@ -145,6 +145,16 @@
                 description = "Agent markdown files installed to ~/.omp/agents/agent/, where each attribute name becomes the filename.";
               };
 
+              plugins = lib.mkOption {
+                type = lib.types.listOf lib.types.str;
+                default = [ ];
+                description = ''
+                  Extensions to install and register.
+                  npm package:  "@scope/name" or "name"
+                  GitHub repo:  "github:owner/repo" or "github:owner/repo#branch"
+                '';
+              };
+
               extensions = lib.mkOption {
                 type = lib.types.listOf lib.types.str;
                 default = [ ];
@@ -272,8 +282,51 @@
                       text = agentCfg.text;
                     }))
                   cfg.agents)
+                (let
+                  mkPluginDrv = plugin:
+                    if lib.hasPrefix "github:" plugin then
+                      let
+                        repoRef = lib.removePrefix "github:" plugin;
+                        parts = lib.splitString "#" repoRef;
+                        repo = builtins.elemAt parts 0;
+                        ref = if builtins.length parts > 1 then builtins.elemAt parts 1 else "main";
+                        tarball = builtins.fetchTarball "https://github.com/${repo}/archive/${ref}.tar.gz";
+                        repoName = builtins.elemAt (lib.splitString "/" repo) 1;
+                        src = tarball;
+                      in
+                      "${pkgs.runCommand "omp-plugin-${repoName}" { inherit src; } ''
+                        mkdir -p $out
+                        if [ -f $src/dist/extension.js ]; then
+                          cp $src/dist/extension.js $out/extension.js
+                        elif [ -f $src/dist/extension.ts ]; then
+                          cp $src/dist/extension.ts $out/extension.js
+                        elif [ -f $src/extension.js ]; then
+                          cp $src/extension.js $out/extension.js
+                        elif [ -f $src/extension.ts ]; then
+                          cp $src/extension.ts $out/extension.js
+                        else
+                          echo "No extension entry point found in $src" >&2
+                          exit 1
+                        fi
+                      ''}/extension.js"
+                    else
+                      let
+                        plainName = if lib.hasPrefix "@" plugin then
+                          let parts = lib.splitString "/" plugin; in builtins.elemAt parts 1
+                        else plugin;
+                        tarball = builtins.fetchTarball "https://registry.npmjs.org/${plugin}/latest";
+                        src = tarball;
+                      in
+                      "${pkgs.runCommand "omp-plugin-${plainName}" { inherit src; } ''
+                        mkdir -p $out
+                        tar xf $src --strip-components=2 -C $out package/dist/extension.js
+                      ''}/extension.js";
+
+                  pluginPaths = map mkPluginDrv cfg.plugins;
+                  allExtensions = cfg.extensions ++ pluginPaths;
+                in
                 (lib.mkIf
-                  (cfg.extensions != [ ]
+                  (allExtensions != [ ]
                     || cfg.disabledExtensions != [ ]
                     || cfg.models.default != null || cfg.models.roles != { }
                     || cfg.models.cycleOrder != [ ] || cfg.models.providerOrder != [ ]
@@ -286,14 +339,14 @@
                   {
                     ".omp/agent/config.yml".text =
                     let
-                      inherit (cfg) extensions disabledExtensions symbolPreset npmCommand settings;
+                      inherit (cfg) disabledExtensions symbolPreset npmCommand settings;
 
                       modelRoles =
                         lib.optionalAttrs (cfg.models.default != null) { default = cfg.models.default; }
                         // cfg.models.roles;
 
                       configAttrs =
-                        lib.optionalAttrs (extensions != [ ]) { inherit extensions; }
+                        lib.optionalAttrs (allExtensions != [ ]) { extensions = allExtensions; }
                         // lib.optionalAttrs (disabledExtensions != [ ]) { inherit disabledExtensions; }
                         // lib.optionalAttrs (modelRoles != { }) { inherit modelRoles; }
                         // lib.optionalAttrs (cfg.models.cycleOrder != [ ]) { cycleOrder = cfg.models.cycleOrder; }
@@ -322,7 +375,7 @@
                         // settings;
                     in
                     builtins.toJSON configAttrs;
-                })
+                }))
               ];
 
               assertions = [
