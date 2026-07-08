@@ -28,28 +28,26 @@ jobs:
             https://api.github.com/repos/can1357/oh-my-pi/releases/latest \
             | jq -r '.tag_name')
           version="${tag#v}"
-          echo "latest_tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "latest_version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Check if update needed
         id: check
         run: |
           current=$(grep -oP 'version = "\K[^"]+' flake.nix)
-          latest="${{ steps.release.outputs.latest_version }}"
+          latest="${{ steps.release.outputs.version }}"
           echo "current=$current" >> "$GITHUB_OUTPUT"
           if [ "$current" = "$latest" ]; then
-            echo "Up to date ($current). Nothing to do."
+            echo "Up to date ($current)."
             echo "needs_update=false" >> "$GITHUB_OUTPUT"
           else
-            echo "Update needed: $current → $latest"
+            echo "$current → $latest"
             echo "needs_update=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Update version and hashes
         if: steps.check.outputs.needs_update == 'true'
-        run: |
-          chmod +x scripts/update-version.sh
-          ./scripts/update-version.sh "${{ steps.release.outputs.latest_version }}"
+        run: ./scripts/update-version.sh "${{ steps.release.outputs.version }}"
 
       - name: Validate flake
         if: steps.check.outputs.needs_update == 'true'
@@ -57,16 +55,22 @@ jobs:
 
       - name: Create Pull Request
         if: steps.check.outputs.needs_update == 'true'
+        id: cpr
         uses: peter-evans/create-pull-request@v7
         with:
-          commit-message: "bump: oh-my-pi ${{ steps.check.outputs.current }} → ${{ steps.release.outputs.latest_version }}"
-          branch: bump/oh-my-pi-${{ steps.release.outputs.latest_version }}
-          title: "bump: oh-my-pi ${{ steps.check.outputs.current }} → ${{ steps.release.outputs.latest_version }}"
+          commit-message: "bump: oh-my-pi ${{ steps.check.outputs.current }} → ${{ steps.release.outputs.version }}"
+          branch: bump/oh-my-pi-${{ steps.release.outputs.version }}
+          title: "bump: oh-my-pi ${{ steps.check.outputs.current }} → ${{ steps.release.outputs.version }}"
           body: |
             Automated update.
 
-            - **${{ steps.check.outputs.current }}** → **${{ steps.release.outputs.latest_version }}**
-            - Release: https://github.com/can1357/oh-my-pi/releases/tag/${{ steps.release.outputs.latest_tag }}
+            - **${{ steps.check.outputs.current }}** → **${{ steps.release.outputs.version }}**
+            - Release: https://github.com/can1357/oh-my-pi/releases/tag/${{ steps.release.outputs.tag }}
+          labels: automated
+          delete-branch: true
 
-            All platform SHA256 hashes regenerated via `nix-prefetch-url`.
-          labels: automated,dependencies
+      - name: Merge Pull Request
+        if: steps.cpr.outputs.pull-request-operation == 'created'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge ${{ steps.cpr.outputs.pull-request-number }} --merge
