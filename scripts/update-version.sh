@@ -25,7 +25,7 @@ declare -A PLATFORM_MAP=(
 echo "Updating to version $VERSION"
 
 # Update version string
-sed -i "s/version = \"[^\"]*\";/version = \"$VERSION\";/" "$FLAKE"
+sed "s/version = \"[^\"]*\";/version = \"$VERSION\";/" "$FLAKE" > "$FLAKE.tmp" && mv "$FLAKE.tmp" "$FLAKE"
 echo "  version → $VERSION"
 
 # Update each platform
@@ -39,12 +39,16 @@ for system in "${!PLATFORM_MAP[@]}"; do
     exit 1
   }
 
+  sri_hash=$(nix hash to-sri --type sha256 "$hash") || {
+    echo "FAILED to convert hash to SRI"
+    exit 1
+  }
+
   # Replace the sha256 for this platform
-  escaped_system=$(echo "$system" | sed 's/_/\\_/g')
-  sed -i "/\"$escaped_system\" = {/,/};/{
-    s|sha256 = \"[^\"]*\"|sha256 = \"$hash\"|
+  sed "/\"$system\" = {/,/};/{
+    s|sha256 = \"[^\"]*\"|sha256 = \"$sri_hash\"|
     s|url = \"[^\"]*\"|url = \"$url\"|
-  }" "$FLAKE"
+  }" "$FLAKE" > "$FLAKE.tmp" && mv "$FLAKE.tmp" "$FLAKE"
   echo "OK"
 done
 
