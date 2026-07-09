@@ -427,12 +427,18 @@
               description = "Extra config.yml keys. Merged last, can override anything above.";
             };
 
+            extraPackages = lib.mkOption {
+              type = lib.types.listOf lib.types.package;
+              default = [ pkgs.gh ];
+              description = "Packages installed alongside omp (available to shell tools, bash, eval, etc.).";
+            };
+
           };
 
           # ── config generation ──────────────────────────────────────
 
           config = lib.mkIf cfg.enable {
-            home.packages = [ cfg.package ];
+            home.packages = [ cfg.package ] ++ cfg.extraPackages;
 
             home.file = lib.mkMerge [
               # Agents
