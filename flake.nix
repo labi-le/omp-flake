@@ -429,7 +429,7 @@
 
             extraPackages = lib.mkOption {
               type = lib.types.listOf lib.types.package;
-              default = [ pkgs.gh ];
+              default = [ pkgs.git pkgs.gh ];
               description = "Packages installed alongside omp (available to shell tools, bash, eval, etc.).";
             };
 
