@@ -102,24 +102,6 @@
           enumType = values: nullable (lib.types.enum values);
 
           # ── config.yml generation helper ──────────────────────────
-
-          configNeeded =
-            cfg.extensions != [ ] || cfg.plugins != [ ]
-            || cfg.disabledExtensions != [ ]
-            || cfg.models.default != null || cfg.models.roles != { }
-            || cfg.models.cycleOrder != [ ] || cfg.models.providerOrder != [ ]
-            || cfg.models.enabled != [ ] || cfg.models.disabledProviders != [ ]
-            || cfg.tools.approvalMode != null || cfg.tools.approval != { }
-            || cfg.tools.intentTracing != null || cfg.tools.maxTimeout != null
-            || cfg.tools.discoveryMode != null
-            || cfg.task.isolation != null || cfg.task.maxConcurrency != null
-            || cfg.symbolPreset != null || cfg.npmCommand != null
-            || cfg.theme.dark != null || cfg.theme.light != null
-            || cfg.compaction.enabled != null
-            || cfg.defaultThinkingLevel != null
-            || cfg.memory.backend != null
-            || cfg.settings != { };
-
           buildConfigAttrs =
             let
               extensions' = cfg.extensions
@@ -198,6 +180,7 @@
               // lib.optionalAttrs (compactionBlock != { }) { compaction = compactionBlock; }
               // lib.optionalAttrs (cfg.defaultThinkingLevel != null) { inherit (cfg) defaultThinkingLevel; }
               // lib.optionalAttrs (memoryBlock != { }) { memory = memoryBlock; }
+              // { setupVersion = 1; }
               // cfg.settings;
 
         in
@@ -461,10 +444,10 @@
                     // lib.optionalAttrs (agentCfg.text != null) { text = agentCfg.text; }))
                 cfg.agents)
 
-              # config.yml
-              (lib.mkIf configNeeded {
+              # config.yml — always written when enabled so omp skips setup wizard
+              {
                 ".omp/agent/config.yml".text = builtins.toJSON buildConfigAttrs;
-              })
+              }
 
               # models.yml
               (lib.mkIf (cfg.providers != { }) {
