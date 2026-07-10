@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   update:
@@ -53,24 +52,11 @@ jobs:
         if: steps.check.outputs.needs_update == 'true'
         run: nix flake check
 
-      - name: Create Pull Request
+      - name: Commit and push to main
         if: steps.check.outputs.needs_update == 'true'
-        id: cpr
-        uses: peter-evans/create-pull-request@v7
-        with:
-          commit-message: "bump: oh-my-pi ${{ steps.check.outputs.current }} → ${{ steps.release.outputs.version }}"
-          branch: bump/oh-my-pi-${{ steps.release.outputs.version }}
-          title: "bump: oh-my-pi ${{ steps.check.outputs.current }} → ${{ steps.release.outputs.version }}"
-          body: |
-            Automated update.
-
-            - **${{ steps.check.outputs.current }}** → **${{ steps.release.outputs.version }}**
-            - Release: https://github.com/can1357/oh-my-pi/releases/tag/${{ steps.release.outputs.tag }}
-          labels: automated
-          delete-branch: true
-
-      - name: Merge Pull Request
-        if: steps.cpr.outputs.pull-request-operation == 'created'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh pr merge ${{ steps.cpr.outputs.pull-request-number }} --merge
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add flake.nix
+          git commit -m "bump: oh-my-pi ${{ steps.check.outputs.current }} → ${{ steps.release.outputs.version }}"
+          git push
