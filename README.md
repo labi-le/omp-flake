@@ -37,6 +37,10 @@ Use in another flake:
 Import the module and enable it. With `enable = true` the flake always writes a
 `config.yml` (including `setupVersion`), so `omp` skips the onboarding wizard on first run.
 
+Every key written to `config.yml` is validated against omp's own settings schema
+(`omp config list`) at build time: a typo or unknown field fails `home-manager switch`
+with the offending key named, instead of being silently ignored by omp.
+
 ```nix
 {
   imports = [ omp-flake.homeManagerModules.default ];
@@ -81,7 +85,7 @@ programs.oh-my-pi = {
   };
 
   # Subagents
-  task = { isolation = true; maxConcurrency = 16; };
+  task = { isolation.mode = "auto"; maxConcurrency = 16; };
 
   # Memory & context
   memory.backend = "mnemopi";
@@ -182,6 +186,7 @@ programs.oh-my-pi.extraPackages = with pkgs; [
 
 Only the common options are typed above. Any other `config.yml` key goes through `settings`,
 which is merged last and can override anything. Dotted keys are quoted strings.
+Keys are validated against omp's schema — an unknown or misspelled key fails the build.
 
 ```nix
 programs.oh-my-pi.settings = {
@@ -211,20 +216,20 @@ programs.oh-my-pi.settings = {
 | `models.disabledProviders` | list of str | Disabled providers. |
 | `tools.approvalMode` | enum | `default` \| `yolo` \| `prompt` \| `write`. |
 | `tools.approval` | attrs | Per-tool: `allow` \| `prompt` \| `deny`. |
-| `tools.discoveryMode` | str | Tool discovery mode. |
 | `tools.intentTracing` | bool | Enable intent tracing. |
 | `tools.maxTimeout` | int | Max tool timeout (ms). |
-| `task.isolation` | bool | Isolated git worktrees for subagents. |
+| `task.isolation.mode` | enum | Isolation backend: `none` \| `auto` \| `apfs` \| `btrfs` \| `zfs` \| `reflink` \| `overlayfs` \| `projfs` \| `block-clone` \| `rcopy`. |
+| `task.isolation.merge` | enum | Merge strategy: `patch` \| `branch`. |
+| `task.isolation.commits` | enum | Commit attribution: `generic` \| `ai`. |
 | `task.maxConcurrency` | int | Max concurrent subagents (default 32). |
 | `theme.dark` / `theme.light` | str | Theme names. |
 | `symbolPreset` | enum | `unicode` \| `nerd` \| `ascii`. |
 | `defaultThinkingLevel` | str | e.g. `minimal`…`xhigh`. |
 | `compaction.enabled` | bool | Context compaction. |
 | `memory.backend` | str | e.g. `mnemopi`. |
-| `npmCommand` | list of str | npm command array. |
 | `providers` | attrs | → `~/.omp/agent/models.yml`. |
 | `extraPackages` | list of package | Added to `PATH`; default `[ git gh ]`. |
-| `settings` | attrs | Any extra `config.yml` key; merged last. |
+| `settings` | attrs | Any extra `config.yml` key; merged last. Validated against omp's schema. |
 
 ## Development
 

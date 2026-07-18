@@ -7,6 +7,73 @@
   };
 
   outputs = { self, nixpkgs, flake-utils }@inputs:
+    let
+      # Build config.yml, validating every key against omp's own settings
+      # schema (`omp config list --json`). omp silently ignores unknown keys,
+      # so a typo would otherwise be a no-op; this fails the build instead.
+      # `expectReject` inverts the result for negative tests.
+      mkOmpConfig = { pkgs, omp, name ? "omp-config.yml", attrs, expectReject ? false }:
+        let
+          validatorPy = pkgs.writeText "validate-omp-config.py" ''
+            import json, sys
+
+            config = json.load(open(sys.argv[1]))
+            meta = json.load(open(sys.argv[2]))
+            valid = set(meta)
+            records = {k for k, v in meta.items() if v.get("type") == "record"}
+
+            def under_record(path):
+                parts = path.split(".")
+                return any(".".join(parts[:i]) in records for i in range(1, len(parts)))
+
+            unknown = []
+
+            def walk(obj, prefix=""):
+                for k, v in obj.items():
+                    path = prefix + "." + k if prefix else k
+                    if path in valid or under_record(path):
+                        continue
+                    if isinstance(v, dict):
+                        walk(v, path)
+                    else:
+                        unknown.append(path)
+
+            if not isinstance(config, dict):
+                sys.stderr.write("omp config must be a mapping\n")
+                sys.exit(1)
+
+            walk(config)
+
+            if unknown:
+                sys.stderr.write("omp-flake: unknown config key(s) not in omp's settings schema:\n")
+                for u in sorted(set(unknown)):
+                    sys.stderr.write("  - " + u + "\n")
+                sys.stderr.write("\nRun `omp config list` for valid keys, or nest it under a valid key.\n")
+                sys.exit(1)
+          '';
+          configFile = pkgs.writeText "${name}.in.json" (builtins.toJSON attrs);
+          preamble = ''
+            export HOME="$TMPDIR"
+            export XDG_CONFIG_HOME="$TMPDIR/.config" XDG_DATA_HOME="$TMPDIR/.local/share"
+            export XDG_STATE_HOME="$TMPDIR/.local/state" XDG_CACHE_HOME="$TMPDIR/.cache"
+            omp config list --json > valid.json || { echo "omp config list failed" >&2; exit 1; }
+          '';
+        in
+        pkgs.runCommand name { nativeBuildInputs = [ omp pkgs.python3 ]; } (
+          if expectReject then ''
+            ${preamble}
+            if python3 ${validatorPy} ${configFile} valid.json; then
+              echo "mkOmpConfig: expected rejection but validation passed" >&2
+              exit 1
+            fi
+            mkdir -p "$out"
+          '' else ''
+            ${preamble}
+            python3 ${validatorPy} ${configFile} valid.json || exit 1
+            cp ${configFile} "$out"
+          ''
+        );
+    in
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; config.allowUnfree = true; };
@@ -88,6 +155,8 @@
             tar xf $src --strip-components=${toString stripComponents} -C $out ${sourcePath}
           '';
 
+      lib.mkOmpConfig = mkOmpConfig;
+
       # ── Home Manager module ──────────────────────────────────────────
 
       homeManagerModules.default = { config, lib, pkgs, ... }:
@@ -149,14 +218,20 @@
               toolsBlock = lib.filterAttrs (_: v: v != null && v != { }) {
                 approvalMode = cfg.tools.approvalMode;
                 approval = cfg.tools.approval;
-                discoveryMode = cfg.tools.discoveryMode;
                 intentTracing = cfg.tools.intentTracing;
                 maxTimeout = cfg.tools.maxTimeout;
               };
 
               taskBlock =
-                lib.filterAttrs (_: v: v != null) {
-                  isolation = lib.optionalAttrs (cfg.task.isolation != null) { enabled = cfg.task.isolation; };
+                let
+                  isolationBlock = lib.filterAttrs (_: v: v != null) {
+                    mode = cfg.task.isolation.mode;
+                    merge = cfg.task.isolation.merge;
+                    commits = cfg.task.isolation.commits;
+                  };
+                in
+                lib.filterAttrs (_: v: v != null && v != { }) {
+                  isolation = isolationBlock;
                   maxConcurrency = cfg.task.maxConcurrency;
                 };
 
@@ -175,7 +250,6 @@
               // lib.optionalAttrs (toolsBlock != { }) { tools = toolsBlock; }
               // lib.optionalAttrs (taskBlock != { }) { task = taskBlock; }
               // lib.optionalAttrs (cfg.symbolPreset != null) { inherit (cfg) symbolPreset; }
-              // lib.optionalAttrs (cfg.npmCommand != null) { inherit (cfg) npmCommand; }
               // lib.optionalAttrs (themeBlock != { }) { theme = themeBlock; }
               // lib.optionalAttrs (compactionBlock != { }) { compaction = compactionBlock; }
               // lib.optionalAttrs (cfg.defaultThinkingLevel != null) { inherit (cfg) defaultThinkingLevel; }
@@ -296,11 +370,6 @@
                     default = { };
                     description = "Per-tool approval: { bash = \"prompt\"; edit = \"allow\"; }";
                   };
-                  discoveryMode = lib.mkOption {
-                    type = nullable lib.types.str;
-                    default = null;
-                    description = "Tool discovery mode.";
-                  };
                   intentTracing = lib.mkOption {
                     type = nullable lib.types.bool;
                     default = null;
@@ -323,9 +392,27 @@
               type = lib.types.submodule {
                 options = {
                   isolation = lib.mkOption {
-                    type = nullable lib.types.bool;
-                    default = null;
-                    description = "Enable isolated git worktrees for subagents.";
+                    type = lib.types.submodule {
+                      options = {
+                        mode = lib.mkOption {
+                          type = enumType [ "none" "auto" "apfs" "btrfs" "zfs" "reflink" "overlayfs" "projfs" "block-clone" "rcopy" ];
+                          default = null;
+                          description = "Subagent isolation backend (→ task.isolation.mode).";
+                        };
+                        merge = lib.mkOption {
+                          type = enumType [ "patch" "branch" ];
+                          default = null;
+                          description = "Isolation merge strategy (→ task.isolation.merge).";
+                        };
+                        commits = lib.mkOption {
+                          type = enumType [ "generic" "ai" ];
+                          default = null;
+                          description = "Isolation commit attribution (→ task.isolation.commits).";
+                        };
+                      };
+                    };
+                    default = { };
+                    description = "Subagent isolation settings.";
                   };
                   maxConcurrency = lib.mkOption {
                     type = nullable lib.types.int;
@@ -399,12 +486,6 @@
               description = "Glyph set for icons/symbols.";
             };
 
-            npmCommand = lib.mkOption {
-              type = nullable (lib.types.listOf lib.types.str);
-              default = null;
-              description = "npm command array for package management.";
-            };
-
             defaultThinkingLevel = lib.mkOption {
               type = nullable lib.types.str;
               default = null;
@@ -450,9 +531,17 @@
                     // lib.optionalAttrs (agentCfg.text != null) { text = agentCfg.text; }))
                 cfg.agents)
 
-              # config.yml — always written when enabled so omp skips setup wizard
+              # config.yml — always written when enabled so omp skips setup
+              # wizard. Built through mkOmpConfig so unknown keys (typos in the
+              # `settings` escape hatch) fail the build instead of being silently
+              # ignored by omp.
               {
-                ".omp/agent/config.yml".text = builtins.toJSON buildConfigAttrs;
+                ".omp/agent/config.yml".source = mkOmpConfig {
+                  inherit pkgs;
+                  omp = cfg.package;
+                  name = "omp-config.yml";
+                  attrs = buildConfigAttrs;
+                };
               }
 
               # models.yml
@@ -478,7 +567,7 @@
 
       # ── flake checks (tests) ────────────────────────────────────────
 
-      checks = flake-utils.lib.eachDefaultSystem (system:
+      checks = (flake-utils.lib.eachDefaultSystem (system:
         let
           pkgs = import nixpkgs { inherit system; config.allowUnfree = true; };
           lib = pkgs.lib;
@@ -491,20 +580,25 @@
                   self.homeManagerModules.default
                   { programs.oh-my-pi = ompConfig; }
                   {
-                    _module.check = false;
-                    home.homeDirectory = "/home/test";
-                    home.username = "test";
-                    home.stateVersion = "25.05";
+                    # Stub the home-manager options the module sets, so evalModules
+                    # (without the real HM modules) exposes config.home.file.
+                    options = {
+                      home.file = lib.mkOption { type = lib.types.attrsOf lib.types.raw; default = { }; };
+                      home.packages = lib.mkOption { type = lib.types.listOf lib.types.raw; default = [ ]; };
+                      home.homeDirectory = lib.mkOption { type = lib.types.str; default = "/home/test"; };
+                      home.username = lib.mkOption { type = lib.types.str; default = "test"; };
+                      home.stateVersion = lib.mkOption { type = lib.types.str; default = "25.05"; };
+                      assertions = lib.mkOption { type = lib.types.listOf lib.types.raw; default = [ ]; };
+                    };
                   }
+                  { _module.args.pkgs = pkgs; }
                 ];
               };
             in
-              # Force evaluation, extract config
-              builtins.deepSeq result.config.home.file result.config.home.file;
+              result.config.home.file;
 
           files = evalModule {
             enable = true;
-            plugins = [ "@baylarsadigov/omp-undo-redo" ];
             extensions = [ "/some/ext.js" ];
             disabledExtensions = [ "extension-module:bad-ext" ];
             models = {
@@ -522,12 +616,12 @@
               maxTimeout = 120000;
             };
             task = {
-              isolation = true;
+              isolation.mode = "auto";
+              isolation.merge = "branch";
               maxConcurrency = 16;
             };
             theme.dark = "titanium";
             symbolPreset = "nerd";
-            npmCommand = [ "/bin/npm" ];
             compaction.enabled = true;
             defaultThinkingLevel = "medium";
             memory.backend = "mnemopi";
@@ -545,18 +639,18 @@
               };
             };
             settings = {
-              extraCustomKey = "yes";
+              autoResume = true;
             };
             agents."my-agent.md".text = "Hello";
           };
 
-          configYml = builtins.fromJSON files.".omp/agent/config.yml".text;
+          configYml = builtins.fromJSON (builtins.readFile files.".omp/agent/config.yml".source);
           modelsYml = builtins.fromJSON files.".omp/agent/models.yml".text;
 
           check = name: cond: if cond then pkgs.runCommand "test-${name}" { } "mkdir $out" else throw "TEST FAILED: ${name}";
 
         in
-        {
+        { checks = {
           "omp-config-extensions" = check "extensions" (
             lib.elem "/some/ext.js" configYml.extensions
           );
@@ -599,7 +693,8 @@
           );
 
           "omp-config-task-isolation" = check "task.isolation" (
-            configYml.task.isolation.enabled == true
+            configYml.task.isolation.mode == "auto"
+            && configYml.task.isolation.merge == "branch"
           );
 
           "omp-config-task-maxConcurrency" = check "task.maxConcurrency" (
@@ -626,12 +721,8 @@
             configYml.symbolPreset == "nerd"
           );
 
-          "omp-config-npmCommand" = check "npmCommand" (
-            configYml.npmCommand == [ "/bin/npm" ]
-          );
-
           "omp-config-settings-merge" = check "settings" (
-            configYml.extraCustomKey == "yes"
+            configYml.autoResume == true
           );
 
           "omp-models-yml-has-aigate" = check "models.yml.aigate" (
@@ -649,7 +740,15 @@
           "omp-agents-file" = check "agents" (
             files.".omp/agents/agent/my-agent.md".text == "Hello"
           );
-        }
-      );
+
+          "omp-config-rejects-unknown" = mkOmpConfig {
+            inherit pkgs;
+            omp = self.packages.${system}.default;
+            name = "omp-config-reject-test";
+            attrs = { setupVersion = 1; totallyBogusKey = 123; };
+            expectReject = true;
+          };
+        }; }
+      )).checks;
     };
 }
