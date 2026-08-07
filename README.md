@@ -8,6 +8,8 @@ Nix flake packaging for [Oh My Pi](https://github.com/can1357/oh-my-pi) (`omp`).
 - A default app (`apps.<system>.default`) for `nix run`.
 - A Home Manager module (`homeManagerModules.default`) exposing `programs.oh-my-pi`, which
   generates `~/.omp/agent/config.yml`, `~/.omp/agent/models.yml`, and installs agent files.
+- On Linux the `omp` wrapper exports `libpulseaudio` and `alsa-lib` on `LD_LIBRARY_PATH`;
+  omp's native audio addon `dlopen`s them at runtime for speech-to-text capture and playback.
 
 Supported systems: `x86_64-linux`, `aarch64-linux`, `x86_64-darwin`, `aarch64-darwin`.
 

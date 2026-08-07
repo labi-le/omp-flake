@@ -115,7 +115,14 @@
           ];
 
           installPhase = let
-            libPath = pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib pkgs.glibc pkgs.openssl pkgs.zlib ];
+            libPath = pkgs.lib.makeLibraryPath [
+              pkgs.stdenv.cc.cc.lib
+              pkgs.glibc
+              pkgs.openssl
+              pkgs.zlib
+              pkgs.libpulseaudio
+              pkgs.alsa-lib
+            ];
           in if pkgs.stdenv.isLinux then ''
             install -Dm755 "$src" "$out/libexec/omp"
             patchelf --set-interpreter "${pkgs.stdenv.cc.bintools.dynamicLinker}" "$out/libexec/omp"
