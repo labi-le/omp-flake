@@ -82,25 +82,25 @@
         packages.default = self.packages.${system}.omp;
         packages.omp = pkgs.stdenv.mkDerivation {
           pname = "oh-my-pi";
-          version = "17.2.14";
+          version = "17.2.15";
 
           src = let
             sources = {
               "x86_64-linux" = {
-                url = "https://github.com/can1357/oh-my-pi/releases/download/v17.2.14/omp-linux-x64";
-                sha256 = "sha256-ZWCUTqYbKcdhXXVFGBNTiCXGCzLqbyNCe/4vC7k89j4=";
+                url = "https://github.com/can1357/oh-my-pi/releases/download/v17.2.15/omp-linux-x64";
+                sha256 = "sha256-+ohJQfky9PXSBGrLqXF5Cuaq4Y/UgGRysB8EHeZwNoo=";
               };
               "aarch64-linux" = {
-                url = "https://github.com/can1357/oh-my-pi/releases/download/v17.2.14/omp-linux-arm64";
-                sha256 = "sha256-R1RNCljMCFhRkOmAU3XF3UeKCZ15/qyVC6/CA/mRBpA=";
+                url = "https://github.com/can1357/oh-my-pi/releases/download/v17.2.15/omp-linux-arm64";
+                sha256 = "sha256-NlB7o9mDMvUmSdIgCerYbxVKsAfLFp1oaQ+isBEXaa0=";
               };
               "x86_64-darwin" = {
-                url = "https://github.com/can1357/oh-my-pi/releases/download/v17.2.14/omp-darwin-x64";
-                sha256 = "sha256-dHrY3ILOmZGvAoXjocgV6wGupTT83c6f5xZFhbEAf8A=";
+                url = "https://github.com/can1357/oh-my-pi/releases/download/v17.2.15/omp-darwin-x64";
+                sha256 = "sha256-AZKB8Q5Ba8GXFsKfyJKLcnhXPHoBG8ryLRXf05sEXQM=";
               };
               "aarch64-darwin" = {
-                url = "https://github.com/can1357/oh-my-pi/releases/download/v17.2.14/omp-darwin-arm64";
-                sha256 = "sha256-zefiBtnTXb8h1KnVedgnQos91HUk1HX6yu3iiGxX7gY=";
+                url = "https://github.com/can1357/oh-my-pi/releases/download/v17.2.15/omp-darwin-arm64";
+                sha256 = "sha256-4oDSW8etiJyHrxAai5yLeqmFPDc6yyWe2mAHqWWawqU=";
               };
             };
             srcInfo = sources.${system} or (throw "Unsupported system: ${system}");
