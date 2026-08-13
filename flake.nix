@@ -82,25 +82,25 @@
         packages.default = self.packages.${system}.omp;
         packages.omp = pkgs.stdenv.mkDerivation {
           pname = "oh-my-pi";
-          version = "17.2.15";
+          version = "17.3.0";
 
           src = let
             sources = {
               "x86_64-linux" = {
-                url = "https://github.com/can1357/oh-my-pi/releases/download/v17.2.15/omp-linux-x64";
-                sha256 = "sha256-+ohJQfky9PXSBGrLqXF5Cuaq4Y/UgGRysB8EHeZwNoo=";
+                url = "https://github.com/can1357/oh-my-pi/releases/download/v17.3.0/omp-linux-x64";
+                sha256 = "sha256-KH8HNm8piW7x40VCPat5uCqNwMFZM4PiDf3WKp3S55k=";
               };
               "aarch64-linux" = {
-                url = "https://github.com/can1357/oh-my-pi/releases/download/v17.2.15/omp-linux-arm64";
-                sha256 = "sha256-NlB7o9mDMvUmSdIgCerYbxVKsAfLFp1oaQ+isBEXaa0=";
+                url = "https://github.com/can1357/oh-my-pi/releases/download/v17.3.0/omp-linux-arm64";
+                sha256 = "sha256-j/1tTQuAA7Qiirzazo7TiC2pgeltmubBklXMRLZ/jzc=";
               };
               "x86_64-darwin" = {
-                url = "https://github.com/can1357/oh-my-pi/releases/download/v17.2.15/omp-darwin-x64";
-                sha256 = "sha256-AZKB8Q5Ba8GXFsKfyJKLcnhXPHoBG8ryLRXf05sEXQM=";
+                url = "https://github.com/can1357/oh-my-pi/releases/download/v17.3.0/omp-darwin-x64";
+                sha256 = "sha256-eyp0m1M1ShQVfybwBqpPudtNTSczIEisRjOLybqezNs=";
               };
               "aarch64-darwin" = {
-                url = "https://github.com/can1357/oh-my-pi/releases/download/v17.2.15/omp-darwin-arm64";
-                sha256 = "sha256-4oDSW8etiJyHrxAai5yLeqmFPDc6yyWe2mAHqWWawqU=";
+                url = "https://github.com/can1357/oh-my-pi/releases/download/v17.3.0/omp-darwin-arm64";
+                sha256 = "sha256-8+V2lIxke18U5M6vB9iuv2F72kIpDHperBiG+0wLE/Y=";
               };
             };
             srcInfo = sources.${system} or (throw "Unsupported system: ${system}");
