@@ -82,25 +82,25 @@
         packages.default = self.packages.${system}.omp;
         packages.omp = pkgs.stdenv.mkDerivation {
           pname = "oh-my-pi";
-          version = "17.3.4";
+          version = "18.6.1";
 
           src = let
             sources = {
               "x86_64-linux" = {
-                url = "https://github.com/can1357/oh-my-pi/releases/download/v17.3.4/omp-linux-x64";
-                sha256 = "sha256-P85LJWKAZLDNe/vGJF7NraMxdQ7Us0Gspr0pukR4qrU=";
+                url = "https://github.com/can1357/oh-my-pi/releases/download/v18.6.1/omp-linux-x64";
+                sha256 = "sha256-ySpoRtAphOhPB8Y2LRit03g/Uo9JT/zx4PJuWU8ydGM=";
               };
               "aarch64-linux" = {
-                url = "https://github.com/can1357/oh-my-pi/releases/download/v17.3.4/omp-linux-arm64";
-                sha256 = "sha256-jifnv+SfwPM/bLC1ASirhf5UAzMNHftbs0zx90Is3Og=";
+                url = "https://github.com/can1357/oh-my-pi/releases/download/v18.6.1/omp-linux-arm64";
+                sha256 = "sha256-y3gVMwuxF4d+ThM1YuqC4wAe5HDkc5NVJQe1p/BAf0o=";
               };
               "x86_64-darwin" = {
-                url = "https://github.com/can1357/oh-my-pi/releases/download/v17.3.4/omp-darwin-x64";
-                sha256 = "sha256-zClVM8MtHl3B/r6MWXLBI15BuWFDGL7FdEHQPEdfcME=";
+                url = "https://github.com/can1357/oh-my-pi/releases/download/v18.6.1/omp-darwin-x64";
+                sha256 = "sha256-TIyl+N/pgHb7aIj3ZGWkO+VQOrOhg8viDMF0j51bm6g=";
               };
               "aarch64-darwin" = {
-                url = "https://github.com/can1357/oh-my-pi/releases/download/v17.3.4/omp-darwin-arm64";
-                sha256 = "sha256-dqbCL4ukujGePVKK3NkhlJ4DOPKxMEJyHmS5kPb//hY=";
+                url = "https://github.com/can1357/oh-my-pi/releases/download/v18.6.1/omp-darwin-arm64";
+                sha256 = "sha256-tcpc0XuMwJ7ONoRZiP1AH30QAuGrW5VgDg8yiSQkbVI=";
               };
             };
             srcInfo = sources.${system} or (throw "Unsupported system: ${system}");
